@@ -62,3 +62,8 @@ class ServiceIsOverloaded(Exception):
 
 class DecryptionFailure(Exception):
     """При попытке дешифровать ссылку от Kodik возникла ошибка"""
+
+class Unauthorized(Exception):
+    """
+    Для выполнения запроса требуется авторизация либо нет доступа
+    """
