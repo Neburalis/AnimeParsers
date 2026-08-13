@@ -103,9 +103,12 @@ class AnilibertyAPI(_BaseApi):
         super().__init__(*args, **kwargs) # Инициализация базового апи
         self.Anime = AnilibertyAPI.Anime(*args, **kwargs) # Инициализация всех подклассов (чтобы можно было пользоваться Anime.Catalog.func без инициализации)
         self.Anime.Catalog = self.Anime.Catalog(*args, **kwargs)
+        self.Anime.Catalog.References = self.Anime.Catalog.References(*args, **kwargs)
         self.Anime.Franchises = self.Anime.Franchises(*args, **kwargs)
         self.Anime.Genres = self.Anime.Genres(*args, **kwargs)
         self.Anime.Releases = self.Anime.Releases(*args, **kwargs)
+        self.Anime.Releases.Episodes = self.Anime.Releases.Episodes(*args, **kwargs)
+        self.Anime.Releases.ReleasesSchedule = self.Anime.Releases.ReleasesSchedule(*args, **kwargs)
         self.Anime.Torrents = self.Anime.Torrents(*args, **kwargs)
         self.App = AnilibertyAPI.App(*args, **kwargs)
         self.Media = AnilibertyAPI.Media(*args, **kwargs)
@@ -133,9 +136,12 @@ class AnilibertyAPI(_BaseApi):
         self._auth_token = token
         self.Anime.set_auth_token(self._auth_token)
         self.Anime.Catalog.set_auth_token(self._auth_token)
+        self.Anime.Catalog.References.set_auth_token(self._auth_token)
         self.Anime.Franchises.set_auth_token(self._auth_token)
         self.Anime.Genres.set_auth_token(self._auth_token)
         self.Anime.Releases.set_auth_token(self._auth_token)
+        self.Anime.Releases.Episodes.set_auth_token(self._auth_token)
+        self.Anime.Releases.ReleasesSchedule.set_auth_token(self._auth_token)
         self.Anime.Torrents.set_auth_token(self._auth_token)
         self.User.set_auth_token(self._auth_token)
         self.User.Collections.set_auth_token(self._auth_token)
@@ -157,9 +163,12 @@ class AnilibertyAPI(_BaseApi):
         self._auth_token = None
         self.Anime.clear_auth_token()
         self.Anime.Catalog.clear_auth_token()
+        self.Anime.Catalog.References.clear_auth_token()
         self.Anime.Franchises.clear_auth_token()
         self.Anime.Genres.clear_auth_token()
         self.Anime.Releases.clear_auth_token()
+        self.Anime.Releases.Episodes.clear_auth_token()
+        self.Anime.Releases.ReleasesSchedule.clear_auth_token()
         self.Anime.Torrents.clear_auth_token()
         self.User.clear_auth_token()
         self.User.Collections.clear_auth_token()
@@ -238,7 +247,7 @@ class AnilibertyAPI(_BaseApi):
         """
         class _Genre:
             pass
-        class Боевые_Искусства(_Genre):
+        class Боевые_искусства(_Genre):
             _r = 15
         class Вампиры(_Genre):
             _r = 24
@@ -310,7 +319,7 @@ class AnilibertyAPI(_BaseApi):
             _r = 23
 
         genres = {
-            'Боевые искусства': Боевые_Искусства._r,
+            'Боевые искусства': Боевые_искусства._r,
             'Вампиры': Вампиры._r,
             'Гарем': Гарем._r,
             'Демоны': Демоны._r,
@@ -451,8 +460,8 @@ class AnilibertyAPI(_BaseApi):
                     if 'f' not in params.keys(): params['f'] = {}
                     if type(sorting) == str and (sorting in AnilibertyAPI.Sorting.sorts or bypass_validation):
                         params['f']['sorting'] = sorting
-                    elif type(t) == type and issubclass(t, AnilibertyAPI.Sorting._Sort):
-                        params['f']['sorting'] = sorting._t
+                    elif type(sorting) == type and issubclass(sorting, AnilibertyAPI.Sorting._Sort):
+                        params['f']['sorting'] = sorting._r
                     else:
                         raise KeyError(f'Неизвестный параметр сортировки \'{sorting}\'. Вы можете посмотреть доступные параметры в AnilibertyAPI.Sorting.sorts')
                 if len(age_ratings) > 0:
@@ -534,7 +543,7 @@ class AnilibertyAPI(_BaseApi):
                     """
                     Возвращает список возможных сезонов релизов в каталоге
                     """
-                    return self._req('/anime/catalog/references/season')
+                    return self._req('/anime/catalog/references/seasons')
 
                 def sorting(self) -> list[dict]:
                     """
@@ -666,7 +675,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
 
-            def genre_by_id(self, genre_id: int, include: list[str] = [], exclude: list[str] = []) -> dict:
+            def genre_by_id(self, genre_id: int | type['AnilibertyAPI.Genres._Genre'], include: list[str] = [], exclude: list[str] = []) -> dict:
                 """
                 Возвращает данные по жанру
 
@@ -674,14 +683,19 @@ class AnilibertyAPI(_BaseApi):
                 :include: Список включаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 :exclude: Список исключаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 """
+                g_id = None
                 params = {}
                 if len(include) > 0:
                     params['include'] = ','.join(include)
                 if len(exclude) > 0:
                     params['exclude'] = ','.join(exclude)
-                data = self._request("GET", self._api_path+'/anime/genres/'+genre_id, headers=self._headers, params=params)
+                if type(genre_id) == type and issubclass(genre_id, AnilibertyAPI.Genres._Genre):
+                    g_id = genre_id._r
+                elif type(genre_id) == int:
+                    g_id = genre_id
+                data = self._request("GET", self._api_path+'/anime/genres/'+str(g_id), headers=self._headers, params=params)
                 if data.status_code == 404:
-                    raise errors.NoResults(f"Результат отсутствует для id жанра \"{genre_id}\"")
+                    raise errors.NoResults(f"Результат отсутствует для id жанра \"{g_id}\"")
                 elif data.status_code != 200:
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
@@ -706,7 +720,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
 
-            def releases_by_genre_id(self, genre_id: int, page: int = 1, limit: int = 10, include: list[str] = [], exclude: list[str] = []) -> dict:
+            def releases_by_genre_id(self, genre_id: int | type['AnilibertyAPI.Genres._Genre'], page: int = 1, limit: int = 10, include: list[str] = [], exclude: list[str] = []) -> dict:
                 """
                 Возвращает список всех релизов жанра
 
@@ -716,14 +730,19 @@ class AnilibertyAPI(_BaseApi):
                 :include: Список включаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 :exclude: Список исключаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 """
-                params = {'genreId': genre_id, 'page': page, 'limit': limit}
+                g_id = None
+                if type(genre_id) == type and issubclass(genre_id, AnilibertyAPI.Genres._Genre):
+                    g_id = genre_id._r
+                elif type(genre_id) == int:
+                    g_id = genre_id
+                params = {'page': page, 'limit': limit}
                 if len(include) > 0:
                     params['include'] = ','.join(include)
                 if len(exclude) > 0:
                     params['exclude'] = ','.join(exclude)
-                data = self._request("GET", self._api_path+'/anime/genres/random/', headers=self._headers, params=params)
+                data = self._request("GET", self._api_path+'/anime/genres/'+str(g_id)+'/releases', headers=self._headers, params=params)
                 if data.status_code == 404:
-                    raise errors.NoResults(f"Результат отсутствует для id жанра \"{genre_id}\"")
+                    raise errors.NoResults(f"Результат отсутствует для id жанра \"{g_id}\"")
                 elif data.status_code != 200:
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
@@ -807,9 +826,9 @@ class AnilibertyAPI(_BaseApi):
                 if ids == None and aliases == None:
                     raise errors.PostArgumentsError("Требуется указать как минимум один id либо alias")
                 params = {'page': page, 'limit': limit}
-                if len(ids) > 0:
+                if ids != None and len(ids) > 0:
                     params['ids'] = ','.join(map(str, ids))
-                if len(aliases) > 0:
+                if aliases != None and len(aliases) > 0:
                     params['aliases'] = ','.join(aliases)
                 if len(include) > 0:
                     params['include'] = ','.join(include)
@@ -837,7 +856,7 @@ class AnilibertyAPI(_BaseApi):
                 
                 Возвращает словарь.
                 """
-                return self.release_by_id_or_alias(release_id, include, exclude)
+                return self.by_id_or_alias(release_id, include, exclude)
 
             def by_alias(self, alias: str, include: list[str] = [], exclude: list[str] = []) -> dict:
                 """
@@ -866,7 +885,7 @@ class AnilibertyAPI(_BaseApi):
                     params['include'] = ','.join(include)
                 if len(exclude) > 0:
                     params['exclude'] = ','.join(exclude)
-                data = self._request("GET", self._api_path+'/anime/releases/'+id_or_alias, headers=self._headers, params=params)
+                data = self._request("GET", self._api_path+'/anime/releases/'+str(id_or_alias), headers=self._headers, params=params)
                 if data.status_code == 404:
                     raise errors.NoResults(f"Результат отсутствует для id или alias \"{id_or_alias}\"")
                 elif data.status_code != 200:
@@ -886,7 +905,7 @@ class AnilibertyAPI(_BaseApi):
                     params['include'] = ','.join(include)
                 if len(exclude) > 0:
                     params['exclude'] = ','.join(exclude)
-                data = self._request("GET", self._api_path+'/anime/releases/'+id_or_alias+'/members', headers=self._headers, params=params)
+                data = self._request("GET", self._api_path+'/anime/releases/'+str(id_or_alias)+'/members', headers=self._headers, params=params)
                 if data.status_code == 404:
                     raise errors.NoResults(f"Результат отсутствует on members for release with id or alias \"{id_or_alias}\"")
                 elif data.status_code != 200:
@@ -906,7 +925,7 @@ class AnilibertyAPI(_BaseApi):
                     params['include'] = ','.join(include)
                 if len(exclude) > 0:
                     params['exclude'] = ','.join(exclude)
-                data = self._request("GET", self._api_path+'/anime/releases/'+id_or_alias+'/members', headers=self._headers, params=params, auth_required=True)
+                data = self._request("GET", self._api_path+'/anime/releases/'+str(id_or_alias)+'/members', headers=self._headers, params=params, auth_required=True)
                 if data.status_code == 404:
                     raise errors.NoResults(f"Результат отсутствует on episodes timecodes for release with id or alias \"{id_or_alias}\"")
                 elif data.status_code == 403:
@@ -956,7 +975,7 @@ class AnilibertyAPI(_BaseApi):
                     if data.status_code == 404:
                         raise errors.NoResults(f"Результат отсутствует для таймкодов эпизода с id \"{release_episode_id}\"")
                     elif data.status_code == 403:
-                        raise errors.ContentBlocked("Получен код 403. Требуется авторизация")
+                        raise errors.Unauthorized("Получен код 403. Требуется авторизация")
                     elif data.status_code != 200:
                         raise errors.UnexpectedBehavior(f"Ожидались коды 200, 404 или 403. Получен: {data.status_code}")
                     return data.json()
@@ -982,7 +1001,7 @@ class AnilibertyAPI(_BaseApi):
                         raise errors.UnexpectedBehavior(f"Ожидася код 200. Получен: {data.status_code}")
                     return data.json()
 
-                def week(self, include: list[str] = [], exclude: list[str] = []) -> dict:
+                def week(self, include: list[str] = [], exclude: list[str] = []) -> list:
                     """
                     Возвращает список релизов в расписании на текущую неделю
                 
@@ -1060,7 +1079,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.text
 
-            def by_release_id(self, release_id: int, include: list[str] = [], exclude: list[str] = []):
+            def by_release_id(self, release_id: int, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
                 """
                 Возвращает данные по торрентам релиза
 
@@ -1155,7 +1174,7 @@ class AnilibertyAPI(_BaseApi):
             return data.json()
 
     class Media(_BaseApi):
-        def promotions(self, include: list[str] = [], exclude: list[str] = []) -> dict:
+        def promotions(self, include: list[str] = [], exclude: list[str] = []) -> list:
             """
             Возвращает список промо-материалов или рекламные кампании в случайном порядке
 
@@ -1172,7 +1191,7 @@ class AnilibertyAPI(_BaseApi):
                 raise errors.UnexpectedBehavior(f"Ожидася код 200. Получен: {data.status_code}")
             return data.json()
 
-        def videos(self, limit: int = 5, include: list[str] = [], exclude: list[str] = []) -> dict:
+        def videos(self, limit: int = 5, include: list[str] = [], exclude: list[str] = []) -> list:
             """
             Возвращает список последних видео-роликов
 
@@ -1189,6 +1208,35 @@ class AnilibertyAPI(_BaseApi):
             if data.status_code != 200:
                 raise errors.UnexpectedBehavior(f"Ожидася код 200. Получен: {data.status_code}")
             return data.json()
+
+        def vasts(self) -> list[dict]:
+            """
+            Возвращает список со всеми доступными для использования VAST кампаниями
+
+            Пример:
+            [
+            {
+                "id": "17974e6e-da62-427b-9937-9021cf4cafe4",
+                "url": "https://example.com/vast.xml",
+                "ad_erid": "ERID123456789",
+                "ad_company_itn": "1234567890",
+                "ad_company_name": "Company XYZ"
+            }
+            ]
+            """
+            data = self._request("GET", self._api_path+'/media/vasts', headers=self._headers)
+            if data.status_code != 200:
+                raise errors.UnexpectedBehavior(f"Ожидася код 200. Получен: {data.status_code}")
+            return data.json()
+
+        def manifest_xml(self) -> str:
+            """
+            Возвращает XML страницу со всеми доступными для использования VAST кампаниями. Можно просто отдавать этот URL в любой VAST плеер, который поддерживает загрузку vast XML по url
+            """
+            data = self._request("GET", self._api_path+'/media/manifest.xml', headers=self._xml_headers)
+            if data.status_code != 200:
+                raise errors.UnexpectedBehavior(f"Ожидася код 200. Получен: {data.status_code}")
+            return data.text
 
     class Teams(_BaseApi):
         """
@@ -1388,7 +1436,7 @@ class AnilibertyAPI(_BaseApi):
                 return self.add_multiple_releases([params, ])
                 
 
-            def add_multiple_releases(self, data: list[dict]):
+            def add_multiple_releases(self, data: list[dict], bypass_validation: bool = False):
                 """
                 Добавляет несколько релизов в соответствующие коллекции авторизованного пользователя
                 
@@ -1400,9 +1448,17 @@ class AnilibertyAPI(_BaseApi):
                         },
                         ...
                     ]
+                :bypass_validation: Отключение проверки корректности данных (перед запросом). (По умолчанию False - проверка проводится) 
 
                 Ничего не возвращает
                 """
+                for i, x in enumerate(data):
+                    if type(x['type_of_collection']) == type and issubclass(x['type_of_collection'], AnilibertyAPI.CollectionTypes._ColType):
+                        data[i]['type_of_collection'] = x['type_of_collection']._r
+                    elif type(x['type_of_collection']) == str and (x['type_of_collection'] in AnilibertyAPI.CollectionTypes.types or bypass_validation):
+                        pass
+                    else:
+                        raise KeyError(f'Неизвестный тип коллекции "{x['type_of_collection']}"! Вы можете посмотреть доступные параметры в AnilibertyAPI.CollectionTypes.types')
                 data = self._request("POST", self._api_path+"/accounts/users/me/collections", headers=self._headers, data=json.dumps(data), auth_required=True)
                 if data.status_code == 403:
                     raise errors.Unauthorized("Получен код 403. Требуется авторизация")
@@ -1601,7 +1657,7 @@ class AnilibertyAPI(_BaseApi):
                 
                 Ничего не возвращает
                 """
-                return self.add_multiple_releases([{'release_id': release_id}, ])
+                return self.add_multiple_releases([release_id, ])
             
             
             def add_multiple_releases(self, ids: list[int]):
@@ -1615,8 +1671,13 @@ class AnilibertyAPI(_BaseApi):
                 data = self._request("POST", self._api_path+"/accounts/users/me/favorites", headers=self._headers, data=json.dumps([{'release_id': x} for x in ids]), auth_required=True)
                 if data.status_code == 403:
                     raise errors.Unauthorized("Получен код 403. Требуется авторизация")
+                elif data.status_code == 422:
+                    data = data.json()
+                    if 'errors' in data.keys():
+                        raise errors.PostArgumentsError(f"Некоторые из указанных параметров неверны. Ошибки:\n{data['errors']}")
+                    raise errors.UnexpectedBehavior(f"Получен код 422 указывающий об ошибке валидации входных параметров, но в ответе сервера отсутствует поле 'errors'. Ответ: {data}")
                 elif data.status_code != 200:
-                    raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 403. Получен: {data.status_code}")
+                    raise errors.UnexpectedBehavior(f"Ожидались коды 200, 422 или 403. Получен: {data.status_code}")
             
             def remove_release(self, release_id: int):
                 """

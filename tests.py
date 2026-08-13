@@ -3,6 +3,7 @@ import parser_tests.animego_test as animego
 import parser_tests.kodik_test as kodik
 import parser_tests.jutsu_test as jutsu
 import parser_tests.shiki_test as shiki
+import parser_tests.aniliberty_test as aniliberty
 
 import asyncio
 import testconfig
@@ -64,6 +65,13 @@ def jutsu_sync():
     try_errors += stats[0]
     try_success += stats[1]
 
+def aniliberty_api_sync():
+    global try_errors, try_success
+    print('\n=== AnilibertyAPI === SYNC TEST ===')
+    stats = aniliberty.api_sync_test(delay=delay, login=aniliberty_login, password=aniliberty_password, proxy=proxy)
+    try_errors += stats[0]
+    try_success += stats[1]
+
 if __name__ == "__main__":
     proxy = None
     GLOBAL_USE_LXML = False
@@ -73,25 +81,29 @@ if __name__ == "__main__":
     animego_mirror = "animego.me"
     shiki_mirror = None
     shiki_proxy = testconfig.SHIKI_PROXY
+    aniliberty_login = testconfig.ANILIBERTY_LOGIN
+    aniliberty_password = testconfig.ANILIBERTY_PASSWORD
 
     try_errors = 0
     try_success = 0
 
     t1 = time()
 
-    kdk_sync()
-    kdk_async()
-    kdk_api()
+    #kdk_sync()
+    #kdk_async()
+    #kdk_api()
 
-    delay = 15 # Запросов много, плюс шики сильно ограничивает
-    shiki_sync()
-    shiki_async()
+    #delay = 15 # Запросов много, плюс шики сильно ограничивает
+    #shiki_sync()
+    #shiki_async()
 
-    delay = 2
-    animego_sync()
-    animego_async()
+    #delay = 2
+    #animego_sync()
+    #animego_async()
     
-    jutsu_sync()
+    #jutsu_sync()
+
+    aniliberty_api_sync()
 
     t2 = time()
     print(f'\nTEST DONE!\nTotal errors: {try_errors}\nTotal success: {try_success}\nTest duration: {str(int((t2-t1)//60)).zfill(2)}:{str(int((t2-t1)%60)).zfill(2)}')
