@@ -1303,7 +1303,7 @@ class Api:
         if parameters is None and link is None:
             raise ValueError('Хотя-бы один из параметров "parameters" или "link" должен быть указан для использования api_request')
         
-        if parameters:
+        if parameters or self._endpoint == 'translations':
             payload = {"token": self.token}
             for item, val in parameters.items():
                 payload[item] = val
@@ -1320,6 +1320,9 @@ class Api:
             if data.status_code != 200:
                 raise errors.ServiceError(f'Произошла ошибка при запросе к kodik api. Ожидался код "200", получен: "{data.status_code}"')
             raise errors.ServiceError(f"Произошла ошибка при запросе к kodik api. Ожидался ответ json, при попытке получения произошла непредвиденная ошибка: {ex}")
+
+        if self._endpoint == 'translations':
+            return data
         
         if 'error' in data.keys() and data['error'] == 'Отсутствует или неверный токен':
             raise errors.TokenError('Отсутствует или неверный токен')
@@ -1355,7 +1358,7 @@ class Api:
         if parameters is None and link is None:
             raise ValueError('Хотя-бы один из параметров "parameters" или "link" должен быть указан для использования api_request')
         
-        if parameters:
+        if parameters or self._endpoint == 'translations':
             payload = {"token": self.token}
             for item, val in parameters.items():
                 payload[item] = val
@@ -1371,6 +1374,9 @@ class Api:
             if data.status_code != 200:
                 raise errors.ServiceError(f'Произошла ошибка при запросе к kodik api. Ожидался код "200", получен: "{data.status_code}"')
             raise errors.ServiceError(f"Произошла ошибка при запросе к kodik api. Ожидался ответ json, при попытке получения произошла непредвиденная ошибка: {ex}")
+
+        if self._endpoint == 'translations':
+            return data
         
         if 'error' in data.keys() and data['error'] == 'Отсутствует или неверный токен':
             raise errors.TokenError('Отсутствует или неверный токен')
