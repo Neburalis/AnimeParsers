@@ -15,6 +15,7 @@
 - [x] Парсер JutSu (без функции поиска, не требует api ключей) (доступно через прокси)
 - [x] Парсер Shikimori (с возможностью использовать псевдо-api, не требует api ключей) (+ асинхронный)
 - [x] API Враппер для Aniibria/Aniliberty (пока только синхронный)
+- [x] Синхронный парсер каталога Anixart (возвращает ссылки на внешние плееры)
 
 ## Установка
 - Стандартная установка:
@@ -44,7 +45,21 @@ pip install lxml
 - [JutSu инструкция](#jutsu-инструкция)
 - [Shikimori инструкция](#shikimori-инструкция)
 - [Aniliberty API инструкция](ANILIBERTY_API.md)
+- [Anixart инструкция](#anixart-инструкция)
 - [Типы Исключений](#типы-исключений)
+
+## Anixart инструкция
+
+```python
+from anime_parsers_ru import AnixartParser
+
+parser = AnixartParser(proxy=None, timeout=10)
+releases = parser.search("Наруто")
+release = parser.anime_info(releases[0]["id"])
+players = parser.get_player_urls(release["id"])
+```
+
+`get_player_urls` не извлекает HLS или MP4, а возвращает внешние ссылки на плееры в порядке ответа Anixart. Каждый элемент списка содержит ровно ключи `type_id`, `type_name`, `source_id`, `source_name`, `episode_position`, `episode_name`, `iframe`, `quality` и `url`.
 
 ## Kodik инструкция
 
