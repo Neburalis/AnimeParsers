@@ -138,6 +138,66 @@ for release in result["content"]:
 
 `content` содержит релизы в том же формате, что и `search()`. Пустой список означает, что страница не содержит результатов; исключение `NoResults` в этом случае не возникает.
 
+### Расписание, связи и поиск Anixart
+
+Расписание на неделю возвращается с английскими названиями дней и всегда в порядке от понедельника до воскресенья:
+
+```python
+schedule = parser.get_schedule()
+
+# {
+#     "monday": [{"id": 1, "title": "..."}, ...],
+#     "tuesday": [...],
+#     "wednesday": [...],
+#     "thursday": [...],
+#     "friday": [...],
+#     "saturday": [...],
+#     "sunday": [...],
+# }
+```
+
+Страницу релизов из связанной группы можно получить по её ID:
+
+```python
+related_page = parser.get_related_releases(related_id=7, page=0)
+
+# {
+#     "content": [{"id": 42, "title": "..."}, ...],
+#     "current_page": 0,
+#     "total_count": 27,
+#     "total_page_count": 0,
+# }
+```
+
+Пустой `content` допустим. Значения пагинации возвращаются как прислал Anixart: `total_count` и `total_page_count` не обязаны быть арифметически согласованы.
+
+Случайный релиз запрашивается с расширенными данными по умолчанию:
+
+```python
+release = parser.get_random_release(extended=True)
+# {"id": 42, "title": "...", ...}
+```
+
+Обычный `search()` по-прежнему возвращает только список релизов. Если нужны сведения о найденной группе связанных релизов, используйте `search_extended()` с теми же аргументами:
+
+```python
+result = parser.search_extended("Наруто", page=0, search_by=0)
+
+# {
+#     "releases": [{"id": 42, "title": "Наруто"}, ...],
+#     "related": {
+#         "id": 7,
+#         "release_count": 2,
+#         "name_ru": "Наруто",
+#         "image": "https://...",
+#         "description": None,
+#         "images": None,
+#     },
+# }
+```
+
+`related` может быть `None`. Как и `search()`, `search_extended()` выбрасывает `NoResults`, если список `releases` пуст.
+
 ## Kodik инструкция
 
 > [!IMPORTANT]

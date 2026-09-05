@@ -537,22 +537,121 @@ class AnixartParser:
             result[field] = value
         return result
 
-    def search(self, query: str, page: int = 0, search_by: int = 0) -> list:
+    def _search_request(self, query: str, page: int, search_by: int) -> dict:
         if not isinstance(query, str):
             raise TypeError("query должен быть строкой.")
         if not query.strip():
             raise ValueError("query не должен быть пустым.")
         self._validate_int("page", page, 0)
         self._validate_int("search_by", search_by, 0)
-        payload = self._request(
+        return self._request(
             "post",
             f"search/releases/{page}",
             json={"query": query, "searchBy": search_by},
         )
+
+    def search(self, query: str, page: int = 0, search_by: int = 0) -> list:
+        payload = self._search_request(query, page, search_by)
         releases = self._extract_releases(payload, "releases")
         if not releases:
             raise errors.NoResults(f'По запросу "{query}" ничего не найдено.')
         return releases
+
+    def search_extended(
+        self, query: str, page: int = 0, search_by: int = 0
+    ) -> dict:
+        payload = self._search_request(query, page, search_by)
+        releases = self._extract_releases(payload, "releases")
+        if not releases:
+            raise errors.NoResults(f'По запросу "{query}" ничего не найдено.')
+
+        if "related" not in payload:
+            raise errors.UnexpectedBehavior(
+                'В ответе Anixart отсутствует корректное поле "related".'
+            )
+        related = payload["related"]
+        if related is not None:
+            images = related.get("images") if isinstance(related, dict) else None
+            if (
+                not isinstance(related, dict)
+                or type(related.get("id")) is not int
+                or related["id"] < 1
+                or type(related.get("release_count")) is not int
+                or related["release_count"] < 0
+                or not any(
+                    isinstance(related.get(field), str) and related[field].strip()
+                    for field in ("name_ru", "name")
+                )
+                or not isinstance(related.get("image"), str)
+                or not related["image"].strip()
+                or "description" not in related
+                or (
+                    related["description"] is not None
+                    and not isinstance(related["description"], str)
+                )
+                or "images" not in related
+                or (
+                    images is not None
+                    and (
+                        not isinstance(images, list)
+                        or any(not isinstance(image, str) for image in images)
+                    )
+                )
+            ):
+                raise errors.UnexpectedBehavior(
+                    'В ответе Anixart отсутствует корректное поле "related".'
+                )
+        return {"releases": releases, "related": related}
+
+    def get_schedule(self) -> dict:
+        payload = self._request("get", "schedule")
+        return {
+            day: self._extract_releases(payload, day)
+            for day in (
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            )
+        }
+
+    def get_related_releases(self, related_id: int, page: int = 0) -> dict:
+        self._validate_int("related_id", related_id, 1)
+        self._validate_int("page", page, 0)
+        payload = self._request("get", f"related/{related_id}/{page}")
+        result = {"content": self._extract_releases(payload, "content")}
+        for field in ("current_page", "total_count", "total_page_count"):
+            value = payload.get(field)
+            if type(value) is not int or value < 0:
+                raise errors.UnexpectedBehavior(
+                    f'В ответе Anixart отсутствует корректное поле "{field}".'
+                )
+            result[field] = value
+        return result
+
+    def get_random_release(self, extended: bool = True) -> dict:
+        if type(extended) is not bool:
+            raise TypeError("extended должен быть логическим значением.")
+        payload = self._request(
+            "get", f"release/random?extended_mode={str(extended).lower()}"
+        )
+        release = self._extract(payload, "release", dict)
+        if (
+            not release
+            or type(release.get("id")) is not int
+            or release["id"] < 1
+            or not any(
+                isinstance(release.get(field), str) and release[field].strip()
+                for field in self._TITLE_FIELDS
+            )
+        ):
+            raise errors.UnexpectedBehavior(
+                'В ответе Anixart отсутствует корректное поле "release".'
+            )
+        return release
 
     def anime_info(self, release_id: int, extended: bool = True) -> dict:
         self._validate_int("release_id", release_id, 1)

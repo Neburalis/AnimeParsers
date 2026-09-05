@@ -754,6 +754,428 @@ def test_search_sends_expected_request_and_returns_releases():
     )
 
 
+def test_search_extended_returns_releases_and_preserves_valid_related_fields():
+    session = Mock()
+    releases = [{"id": 42, "title": "Наруто"}]
+    related = {
+        "id": 7,
+        "release_count": 2,
+        "name_ru": "Наруто",
+        "name": "Naruto",
+        "image": "https://example.test/related.jpg",
+        "description": "Связанные релизы",
+        "images": ["https://example.test/1.jpg"],
+        "unknown": {"preserved": True},
+    }
+    session.post.return_value = response(
+        {"code": 0, "releases": releases, "related": related}
+    )
+    parser = AnixartParser(
+        base_url="https://example.test/api",
+        proxy="socks5://proxy.test:1080",
+        timeout=7,
+        session=session,
+    )
+
+    result = parser.search_extended("Наруто", page=2, search_by=1)
+
+    assert result == {"releases": releases, "related": related}
+    assert result["related"] is related
+    session.post.assert_called_once_with(
+        "https://example.test/api/search/releases/2",
+        json={"query": "Наруто", "searchBy": 1},
+        headers=parser._HEADERS,
+        proxies={
+            "http": "socks5://proxy.test:1080",
+            "https": "socks5://proxy.test:1080",
+        },
+        timeout=7,
+    )
+
+
+@pytest.mark.parametrize(
+    "related",
+    [
+        None,
+        {
+            "id": 1,
+            "release_count": 0,
+            "name": "Original name",
+            "image": "image.jpg",
+            "description": None,
+            "images": None,
+        },
+        {
+            "id": 1,
+            "release_count": 0,
+            "name_ru": "Русское название",
+            "image": "image.jpg",
+            "description": "",
+            "images": ["", "image-2.jpg"],
+        },
+    ],
+)
+def test_search_extended_accepts_nullable_related_fields(related):
+    session = Mock()
+    session.post.return_value = response(
+        {"code": 0, "releases": [{"id": 1, "title": "Аниме"}], "related": related}
+    )
+    parser = AnixartParser(session=session)
+
+    assert parser.search_extended("Аниме")["related"] is related
+
+
+@pytest.mark.parametrize(
+    ("args", "error_type"),
+    [
+        ((1,), TypeError),
+        (("  ",), ValueError),
+        (("x", True), TypeError),
+        (("x", "0"), TypeError),
+        (("x", -1), ValueError),
+        (("x", 0, False), TypeError),
+        (("x", 0, "0"), TypeError),
+        (("x", 0, -1), ValueError),
+    ],
+)
+def test_search_extended_validates_arguments_before_request(args, error_type):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(error_type):
+        parser.search_extended(*args)
+    session.post.assert_not_called()
+
+
+def test_empty_successful_search_extended_raises_no_results():
+    session = Mock()
+    session.post.return_value = response({"code": 0, "releases": [], "related": None})
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.NoResults, match="ничего не найдено"):
+        parser.search_extended("Несуществующее аниме")
+
+
+def test_search_extended_requires_related_field():
+    session = Mock()
+    session.post.return_value = response(
+        {"code": 0, "releases": [{"id": 1, "title": "Аниме"}]}
+    )
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="related"):
+        parser.search_extended("Аниме")
+
+
+@pytest.mark.parametrize("releases", [None, {}, [None], [{"id": 1, "title": " "}]])
+def test_search_extended_rejects_malformed_releases(releases):
+    session = Mock()
+    session.post.return_value = response(
+        {"code": 0, "releases": releases, "related": None}
+    )
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="releases"):
+        parser.search_extended("Аниме")
+
+
+def valid_related(**changes):
+    related = {
+        "id": 1,
+        "release_count": 0,
+        "name_ru": "Название",
+        "image": "image.jpg",
+        "description": None,
+        "images": None,
+    }
+    related.update(changes)
+    return related
+
+
+def related_without(field):
+    related = valid_related()
+    related.pop(field)
+    return related
+
+
+@pytest.mark.parametrize(
+    "related",
+    [
+        [],
+        "related",
+        related_without("id"),
+        valid_related(id=None),
+        valid_related(id=True),
+        valid_related(id=0),
+        valid_related(id=-1),
+        valid_related(id="1"),
+        valid_related(release_count=None),
+        valid_related(release_count=True),
+        valid_related(release_count=-1),
+        valid_related(release_count="0"),
+        related_without("name_ru"),
+        valid_related(name_ru=" "),
+        valid_related(name_ru=None),
+        valid_related(name_ru="", name=" "),
+        related_without("image"),
+        valid_related(image=None),
+        valid_related(image=" "),
+        related_without("description"),
+        valid_related(description=1),
+        related_without("images"),
+        valid_related(images="image.jpg"),
+        valid_related(images=["image.jpg", None]),
+    ],
+)
+def test_search_extended_rejects_malformed_related(related):
+    session = Mock()
+    session.post.return_value = response(
+        {
+            "code": 0,
+            "releases": [{"id": 1, "title": "Аниме"}],
+            "related": related,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="related"):
+        parser.search_extended("Аниме")
+
+
+def test_get_schedule_returns_seven_ordered_days_and_sends_no_params():
+    session = Mock()
+    payload = {
+        "code": 0,
+        "monday": [{"id": 1, "title": "Понедельник"}],
+        "tuesday": [],
+        "wednesday": [{"id": 3, "title_ru": "Среда"}],
+        "thursday": [],
+        "friday": [],
+        "saturday": [{"id": 6, "title_original": "Saturday"}],
+        "sunday": [],
+        "ignored": "value",
+    }
+    session.get.return_value = response(payload)
+    parser = AnixartParser(base_url="https://example.test/api", session=session)
+
+    result = parser.get_schedule()
+
+    assert result == {key: payload[key] for key in payload if key not in ("code", "ignored")}
+    assert list(result) == [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    ]
+    session.get.assert_called_once_with(
+        "https://example.test/api/schedule",
+        headers=parser._HEADERS,
+        proxies=None,
+        timeout=10,
+    )
+
+
+@pytest.mark.parametrize("value", [None, {}, "monday"])
+def test_get_schedule_requires_each_day_to_be_a_list(value):
+    payload = {
+        "code": 0,
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": [],
+    }
+    payload["monday"] = value
+    session = Mock()
+    session.get.return_value = response(payload)
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="monday"):
+        parser.get_schedule()
+
+
+@pytest.mark.parametrize(
+    "release",
+    [None, {}, {"id": True, "title": "Аниме"}, {"id": 1, "title": "  "}],
+)
+def test_get_schedule_validates_releases_in_every_day(release):
+    payload = {
+        "code": 0,
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": [release],
+    }
+    session = Mock()
+    session.get.return_value = response(payload)
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="sunday"):
+        parser.get_schedule()
+
+
+def test_get_related_releases_returns_pagination_without_arithmetic_checks():
+    session = Mock()
+    content = [{"id": 42, "title": "Связанный релиз"}]
+    session.get.return_value = response(
+        {
+            "code": 0,
+            "content": content,
+            "current_page": 0,
+            "total_count": 27,
+            "total_page_count": 0,
+        }
+    )
+    parser = AnixartParser(base_url="https://example.test/api", session=session)
+
+    assert parser.get_related_releases(7) == {
+        "content": content,
+        "current_page": 0,
+        "total_count": 27,
+        "total_page_count": 0,
+    }
+    session.get.assert_called_once_with(
+        "https://example.test/api/related/7/0",
+        headers=parser._HEADERS,
+        proxies=None,
+        timeout=10,
+    )
+
+
+def test_get_related_releases_allows_empty_content_and_nonzero_page():
+    session = Mock()
+    session.get.return_value = response(
+        {
+            "code": 0,
+            "content": [],
+            "current_page": 3,
+            "total_count": 0,
+            "total_page_count": 0,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    assert parser.get_related_releases(7, page=3)["content"] == []
+    assert session.get.call_args.args[0].endswith("related/7/3")
+
+
+@pytest.mark.parametrize(
+    ("args", "error_type"),
+    [
+        ((True,), TypeError),
+        (("1",), TypeError),
+        ((0,), ValueError),
+        ((-1,), ValueError),
+        ((1, False), TypeError),
+        ((1, "0"), TypeError),
+        ((1, -1), ValueError),
+    ],
+)
+def test_get_related_releases_validates_arguments_before_request(args, error_type):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(error_type):
+        parser.get_related_releases(*args)
+    session.get.assert_not_called()
+
+
+@pytest.mark.parametrize("field", ["current_page", "total_count", "total_page_count"])
+@pytest.mark.parametrize("value", [None, True, "0", -1])
+def test_get_related_releases_rejects_invalid_pagination(field, value):
+    payload = {
+        "code": 0,
+        "content": [],
+        "current_page": 0,
+        "total_count": 0,
+        "total_page_count": 0,
+    }
+    payload[field] = value
+    session = Mock()
+    session.get.return_value = response(payload)
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match=field):
+        parser.get_related_releases(1)
+
+
+@pytest.mark.parametrize("content", [None, {}, [None], [{"id": 1, "title": " "}]])
+def test_get_related_releases_rejects_malformed_content(content):
+    session = Mock()
+    session.get.return_value = response(
+        {
+            "code": 0,
+            "content": content,
+            "current_page": 0,
+            "total_count": 1,
+            "total_page_count": 1,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="content"):
+        parser.get_related_releases(1)
+
+
+@pytest.mark.parametrize(("extended", "query_value"), [(True, "true"), (False, "false")])
+def test_get_random_release_sends_boolean_query_and_returns_release(
+    extended, query_value
+):
+    session = Mock()
+    release = {"id": 42, "title_alt": "Random title", "unknown": "preserved"}
+    session.get.return_value = response({"code": 0, "release": release})
+    parser = AnixartParser(base_url="https://example.test/api", session=session)
+
+    assert parser.get_random_release(extended=extended) is release
+    session.get.assert_called_once_with(
+        f"https://example.test/api/release/random?extended_mode={query_value}",
+        headers=parser._HEADERS,
+        proxies=None,
+        timeout=10,
+    )
+
+
+@pytest.mark.parametrize("extended", [1, 0, None, "true"])
+def test_get_random_release_requires_exact_boolean(extended):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(TypeError, match="extended"):
+        parser.get_random_release(extended)
+    session.get.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "release",
+    [
+        None,
+        [],
+        {},
+        {"id": True, "title": "Аниме"},
+        {"id": 0, "title": "Аниме"},
+        {"id": -1, "title": "Аниме"},
+        {"id": "1", "title": "Аниме"},
+        {"id": 1},
+        {"id": 1, "title": "  ", "title_ru": None},
+    ],
+)
+def test_get_random_release_rejects_malformed_release(release):
+    session = Mock()
+    session.get.return_value = response({"code": 0, "release": release})
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="release"):
+        parser.get_random_release()
+
+
 def test_anime_info_uses_release_path_and_extended_mode():
     session = Mock()
     release = {"id": 42, "title": "Наруто"}
