@@ -26,7 +26,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases()
+        data = api.Anime.Catalog.releases()
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -41,7 +41,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
     
     try:
-        data = api.Anime.Catalog.catalog_releases(page=3, limit=1, genres=[AnilibertyAPI.Genres.Исекай])
+        data = api.Anime.Catalog.releases(page=3, limit=1, genres=[AnilibertyAPI.Genres.Исекай])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -58,7 +58,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, genres=[AnilibertyAPI.Genres.Демоны], types=[AnilibertyAPI.Types.TV])
+        data = api.Anime.Catalog.releases(page=1, limit=1, genres=[AnilibertyAPI.Genres.Демоны], types=[AnilibertyAPI.Types.TV])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -77,7 +77,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, seasons=['winter', 'summer'], from_year=2019, to_year=2019)
+        data = api.Anime.Catalog.releases(page=1, limit=1, seasons=['winter', 'summer'], from_year=2019, to_year=2019)
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -96,7 +96,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, search="Мастера меча онлайн", to_year=2022, sorting=AnilibertyAPI.Sorting.RATING_DESC)
+        data = api.Anime.Catalog.releases(page=1, limit=1, search="Мастера меча онлайн", to_year=2022, sorting=AnilibertyAPI.Sorting.RATING_DESC)
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -115,7 +115,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, publish_statuses=['IS_ONGOING'])
+        data = api.Anime.Catalog.releases(page=1, limit=1, publish_statuses=['IS_ONGOING'])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -132,7 +132,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, production_statuses=['IS_NOT_IN_PRODUCTION'], sorting=AnilibertyAPI.Sorting.FRESH_AT_DESC, age_ratings=[AnilibertyAPI.AgeRatings.R12_PLUS])
+        data = api.Anime.Catalog.releases(page=1, limit=1, production_statuses=['IS_NOT_IN_PRODUCTION'], sorting=AnilibertyAPI.Sorting.FRESH_AT_DESC, age_ratings=[AnilibertyAPI.AgeRatings.R12_PLUS])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -149,7 +149,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, include=['id', 'year'])
+        data = api.Anime.Catalog.releases(page=1, limit=1, include=['id', 'year'])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -166,7 +166,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Catalog.catalog_releases(page=1, limit=1, exclude=['id', 'year'])
+        data = api.Anime.Catalog.releases(page=1, limit=1, exclude=['id', 'year'])
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
         if len(data['data']) == 0:
@@ -435,15 +435,15 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Genres.random_genres(limit=2)
+        data = api.Anime.Genres.random(limit=2)
         if type(data) != list:
             raise AssertionError(f"Type of data is not list. Type: {type(data)}")
     except Exception as ex:
         try_errors += 1
-        print(f"[FAIL] Genres random genres. Exception: {ex}")
+        print(f"[FAIL] Genres random. Exception: {ex}")
     else:
         try_success += 1
-        print("[OK] Genres random genres")
+        print("[OK] Genres random")
     
     sleep(delay)
 
@@ -562,7 +562,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Releases.members_by_id_or_alias(8632)
+        data = api.Anime.Releases.members(8632)
         if type(data) != list:
             raise AssertionError(f"Type of data is not list. Type: {type(data)}")
     except Exception as ex:
@@ -575,7 +575,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Releases.members_by_id_or_alias('dr-stone-science-future-part-3')
+        data = api.Anime.Releases.members('dr-stone-science-future-part-3')
         if type(data) != list:
             raise AssertionError(f"Type of data is not list. Type: {type(data)}")
     except Exception as ex:
@@ -588,7 +588,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Releases.episodes_timecodes_by_id_or_alias(8632)
+        data = api.Anime.Releases.episodes_timecodes(8632)
         if type(data) != list:
             raise AssertionError(f"Type of data is not list. Type: {type(data)}")
     except Exception as ex:
@@ -601,7 +601,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
     
     try:
-        data = api.Anime.Releases.episodes_timecodes_by_id_or_alias('dr-stone-science-future-part-3')
+        data = api.Anime.Releases.episodes_timecodes('dr-stone-science-future-part-3')
         if type(data) != list:
             raise AssertionError(f"Type of data is not list. Type: {type(data)}")
     except Exception as ex:
@@ -614,7 +614,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Releases.Episodes.episode_by_id('a27be410-409e-45bb-a068-3e60fdaf2e66')
+        data = api.Anime.Releases.Episodes.by_id('a27be410-409e-45bb-a068-3e60fdaf2e66')
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
     except Exception as ex:
@@ -627,7 +627,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Releases.Episodes.episode_timecodes('a27be410-409e-45bb-a068-3e60fdaf2e66')
+        data = api.Anime.Releases.Episodes.timecodes('a27be410-409e-45bb-a068-3e60fdaf2e66')
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
     except errors.NoResults:
@@ -684,7 +684,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Torrents.by_hash_or_id(39480)
+        data = api.Anime.Torrents.by_hash_or_id(39798)
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
     except Exception as ex:
@@ -697,7 +697,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Torrents.by_hash_or_id('fb47b073d35467e48b4e423fac7a414bba99cc21')
+        data = api.Anime.Torrents.by_hash_or_id('a722803ff01595564f9fd04b4ec386ffdf53de85')
         if type(data) != dict:
             raise AssertionError(f"Type of data is not dict. Type: {type(data)}")
     except Exception as ex:
@@ -710,7 +710,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.Anime.Torrents.file(39480)
+        data = api.Anime.Torrents.file(39798)
         if type(data) != str:
             raise AssertionError(f"Type of data is not str. Type: {type(data)}")
     except Exception as ex:
@@ -723,7 +723,7 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
     
     try:
-        data = api.Anime.Torrents.file('fb47b073d35467e48b4e423fac7a414bba99cc21')
+        data = api.Anime.Torrents.file('a722803ff01595564f9fd04b4ec386ffdf53de85')
         if type(data) != str:
             raise AssertionError(f"Type of data is not str. Type: {type(data)}")
     except Exception as ex:
@@ -1152,13 +1152,13 @@ def api_sync_test(delay: float, login: str, password: str, proxy: str | None = N
     sleep(delay)
 
     try:
-        data = api.User.Views.delete_timecode(release_episode_id='a27be410-409e-45bb-a068-3e60fdaf2e66')
+        data = api.User.Views.remove_timecode(release_episode_id='a27be410-409e-45bb-a068-3e60fdaf2e66')
     except Exception as ex:
         try_errors += 1
-        print(f"[FAIL] User.Views delete_timecode. Exception: {ex}")
+        print(f"[FAIL] User.Views remove_timecode. Exception: {ex}")
     else:
         try_success += 1
-        print("[OK] User.Views delete_timecode")
+        print("[OK] User.Views remove_timecode")
     
     sleep(delay)
 

@@ -380,7 +380,7 @@ class AnilibertyAPI(_BaseApi):
             """
             Аниме.Каталог
             """
-            def catalog_releases(self, page: int = 1, limit: int = 10, 
+            def releases(self, page: int = 1, limit: int = 10, 
                                 genres: list[int | str | type['AnilibertyAPI.Genres']] = [],
                                 types: list[str | type['AnilibertyAPI.Types.TV'] | type['AnilibertyAPI.Types.ONA']
                                             | type['AnilibertyAPI.Types.WEB'] | type['AnilibertyAPI.Types.OVA']
@@ -489,10 +489,10 @@ class AnilibertyAPI(_BaseApi):
                 if len(exclude) > 0:
                     params['exclude'] = ",".join(exclude)
 
-                return self.catalog_releases_raw(params)
+                return self.releases_raw(params)
                 
 
-            def catalog_releases_raw(self, params: dict) -> dict:
+            def releases_raw(self, params: dict) -> dict:
                 """
                 Возвращает список релизов по заданными параметрам.
                 В данную функцию параметры передаются в виде словаря.
@@ -700,7 +700,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
 
-            def random_genres(self, limit: int = 5, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
+            def random(self, limit: int = 5, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
                 """
                 Возвращает список случайных жанров
 
@@ -775,7 +775,7 @@ class AnilibertyAPI(_BaseApi):
                 """
                 Возвращает данные по случайным релизам
             
-                :limit: Количество последних релизов в выдаче (Целое число). По умолчанию 10
+                :limit: Количество случайных релизов в выдаче (Целое число). По умолчанию 10
                 :include: Список включаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 :exclude: Список исключаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 """
@@ -796,7 +796,7 @@ class AnilibertyAPI(_BaseApi):
                 Возвращает данные по рекомендованным релизам
 
                 :release_id: Идентификатор релиза, для которого рекомендуем
-                :limit: Количество последних релизов в выдаче (Целое число). По умолчанию 10
+                :limit: Количество рекомендованных релизов (Целое число). По умолчанию 10
                 :include: Список включаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 :exclude: Список исключаемых полей. Поддерживается вложенность через точку. (Пример: id, type.genres) (По умолчанию пустой список - не учитывается)
                 """
@@ -892,7 +892,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
 
-            def members_by_id_or_alias(self, id_or_alias: str | int, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
+            def members(self, id_or_alias: str | int, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
                 """
                 Возвращает данные по участникам релиза
 
@@ -912,7 +912,7 @@ class AnilibertyAPI(_BaseApi):
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                 return data.json()
 
-            def episodes_timecodes_by_id_or_alias(self, id_or_alias: str | int, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
+            def episodes_timecodes(self, id_or_alias: str | int, include: list[str] = [], exclude: list[str] = []) -> list[dict]:
                 """
                 Возвращает данные по всем существующим таймкодам просмотра эпизодов релиза. Имеет 1-2-x минутный кэш.
 
@@ -938,7 +938,7 @@ class AnilibertyAPI(_BaseApi):
                 """
                 Аниме.Релизы.Эпизоды
                 """
-                def episode_by_id(self, release_episode_id: str, include: list[str] = [], exclude: list[str] = []) -> dict:
+                def by_id(self, release_episode_id: str, include: list[str] = [], exclude: list[str] = []) -> dict:
                     """
                     Возвращает данные по эпизоду.
 
@@ -958,7 +958,7 @@ class AnilibertyAPI(_BaseApi):
                         raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 404. Получен: {data.status_code}")
                     return data.json()
 
-                def episode_timecodes(self, release_episode_id: str, include: list[str] = [], exclude: list[str] = []) -> dict:
+                def timecodes(self, release_episode_id: str, include: list[str] = [], exclude: list[str] = []) -> dict:
                     """
                     Возвращает данные по просмотру указанного эпизода авторизованным пользователем. Имеет 1-2-x минутный кэш.
 
@@ -1838,7 +1838,7 @@ class AnilibertyAPI(_BaseApi):
                 elif data.status_code != 200:
                     raise errors.UnexpectedBehavior(f"Ожидались коды 200 или 403. Получен: {data.status_code}")
 
-            def delete_timecode(self, release_episode_id: str):
+            def remove_timecode(self, release_episode_id: str):
                 """
                 Удаляет данные по таймкоду просмотров для указанного эпизода
 
@@ -1846,9 +1846,9 @@ class AnilibertyAPI(_BaseApi):
 
                 Ничего не возвращает
                 """
-                return self.delete_multiple_timecodes([release_episode_id, ])
+                return self.remove_multiple_timecodes([release_episode_id, ])
 
-            def delete_multiple_timecodes(self, ids: list[str]):
+            def remove_multiple_timecodes(self, ids: list[str]):
                 """
                 Удаляет данные по таймкодам просмотров для указанных эпизодов
 

@@ -89,19 +89,19 @@ if __name__ == "__main__":
 
     t1 = time()
 
-    #kdk_sync()
-    #kdk_async()
-    #kdk_api()
+    kdk_sync()
+    kdk_async()
+    kdk_api()
 
-    #delay = 15 # Запросов много, плюс шики сильно ограничивает
-    #shiki_sync()
-    #shiki_async()
+    delay = 15 # Запросов много, плюс шики сильно ограничивает
+    shiki_sync()
+    shiki_async()
 
-    #delay = 2
-    #animego_sync()
-    #animego_async()
+    delay = 2
+    animego_sync()
+    animego_async()
     
-    #jutsu_sync()
+    jutsu_sync()
 
     aniliberty_api_sync()
 
