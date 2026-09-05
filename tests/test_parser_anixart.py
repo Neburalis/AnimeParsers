@@ -29,6 +29,418 @@ def response(payload, status_code=200):
     return result
 
 
+def test_filter_sort_constants_match_android_values():
+    assert AnixartParser.SORT_DATE_UPDATE == 0
+    assert AnixartParser.SORT_GRADE == 1
+    assert AnixartParser.SORT_YEAR == 2
+    assert AnixartParser.SORT_POPULAR == 3
+
+
+def test_filter_sends_complete_request_and_returns_pagination_envelope():
+    session = Mock()
+    content = [
+        {"id": 2, "title": "Второй"},
+        {"id": 1, "title_original": "First"},
+    ]
+    session.post.return_value = response(
+        {
+            "code": 0,
+            "content": content,
+            "current_page": 3,
+            "total_count": 12,
+            "total_page_count": 4,
+        }
+    )
+    parser = AnixartParser(base_url="https://example.test/api", session=session)
+
+    result = parser.filter(
+        page=3,
+        extended=False,
+        category_id=2,
+        country="Япония",
+        end_year=2024,
+        episode_duration_from=20,
+        episode_duration_to=30,
+        episodes_from=1,
+        episodes_to=24,
+        is_genres_exclude_mode_enabled=True,
+        season=2,
+        source="Манга",
+        start_year=2000,
+        status_id=1,
+        studio="Bones",
+        sort=AnixartParser.SORT_POPULAR,
+        genres=["Экшен", "Драма"],
+        profile_list_exclusions=[10, 11],
+        types=[1, 2],
+        age_ratings=[3, 4],
+    )
+
+    assert result == {
+        "content": content,
+        "current_page": 3,
+        "total_count": 12,
+        "total_page_count": 4,
+    }
+    assert result["content"] is content
+    session.post.assert_called_once_with(
+        "https://example.test/api/filter/3?extended_mode=false",
+        json={
+            "category_id": 2,
+            "country": "Япония",
+            "end_year": 2024,
+            "episode_duration_from": 20,
+            "episode_duration_to": 30,
+            "episodes_from": 1,
+            "episodes_to": 24,
+            "is_genres_exclude_mode_enabled": True,
+            "season": 2,
+            "source": "Манга",
+            "start_year": 2000,
+            "status_id": 1,
+            "studio": "Bones",
+            "sort": 3,
+            "genres": ["Экшен", "Драма"],
+            "profile_list_exclusions": [10, 11],
+            "types": [1, 2],
+            "age_ratings": [3, 4],
+        },
+        headers=parser._HEADERS,
+        proxies=None,
+        timeout=10,
+    )
+
+
+def test_filter_defaults_use_fresh_empty_lists_and_allow_empty_content():
+    session = Mock()
+    session.post.return_value = response(
+        {
+            "code": 0,
+            "content": [],
+            "current_page": 0,
+            "total_count": 0,
+            "total_page_count": 0,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    expected = {
+        "content": [],
+        "current_page": 0,
+        "total_count": 0,
+        "total_page_count": 0,
+    }
+    assert parser.filter() == expected
+    assert parser.filter() == expected
+
+    first_body = session.post.call_args_list[0].kwargs["json"]
+    second_body = session.post.call_args_list[1].kwargs["json"]
+    assert first_body == {
+        "category_id": None,
+        "country": None,
+        "end_year": None,
+        "episode_duration_from": None,
+        "episode_duration_to": None,
+        "episodes_from": None,
+        "episodes_to": None,
+        "is_genres_exclude_mode_enabled": False,
+        "season": None,
+        "source": None,
+        "start_year": None,
+        "status_id": None,
+        "studio": None,
+        "sort": 0,
+        "genres": [],
+        "profile_list_exclusions": [],
+        "types": [],
+        "age_ratings": [],
+    }
+    for key in ("genres", "profile_list_exclusions", "types", "age_ratings"):
+        assert first_body[key] is not second_body[key]
+
+
+def test_filter_sends_zero_profile_list_exclusion_unchanged():
+    session = Mock()
+    session.post.return_value = response(
+        {
+            "code": 0,
+            "content": [],
+            "current_page": 0,
+            "total_count": 0,
+            "total_page_count": 0,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    parser.filter(profile_list_exclusions=[0])
+
+    assert session.post.call_args.kwargs["json"]["profile_list_exclusions"] == [0]
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "page",
+        "category_id",
+        "end_year",
+        "episode_duration_from",
+        "episode_duration_to",
+        "episodes_from",
+        "episodes_to",
+        "season",
+        "start_year",
+        "status_id",
+        "sort",
+    ],
+)
+def test_filter_rejects_booleans_for_integer_fields(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(TypeError, match=field):
+        parser.filter(**{field: True})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "page",
+        "episode_duration_from",
+        "episode_duration_to",
+        "episodes_from",
+        "episodes_to",
+    ],
+)
+def test_filter_rejects_negative_page_count_and_duration_fields(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(ValueError, match=field):
+        parser.filter(**{field: -1})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize("field", ["category_id", "status_id"])
+def test_filter_requires_positive_scalar_ids(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(ValueError, match=field):
+        parser.filter(**{field: 0})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize("value", [-1, 4])
+def test_filter_rejects_unknown_sort_values(value):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(ValueError, match="sort"):
+        parser.filter(sort=value)
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize("field", ["extended", "is_genres_exclude_mode_enabled"])
+def test_filter_requires_boolean_flags(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(TypeError, match=field):
+        parser.filter(**{field: 1})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize("field", ["country", "source", "studio"])
+@pytest.mark.parametrize("value", [1, "  "])
+def test_filter_rejects_invalid_optional_strings(field, value):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    error_type = TypeError if value == 1 else ValueError
+    with pytest.raises(error_type, match=field):
+        parser.filter(**{field: value})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("lower_name", "upper_name", "kwargs"),
+    [
+        ("start_year", "end_year", {"start_year": 2025, "end_year": 2024}),
+        ("episodes_from", "episodes_to", {"episodes_from": 13, "episodes_to": 12}),
+        (
+            "episode_duration_from",
+            "episode_duration_to",
+            {"episode_duration_from": 31, "episode_duration_to": 30},
+        ),
+    ],
+)
+def test_filter_rejects_reversed_ranges(lower_name, upper_name, kwargs):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(ValueError, match=f"{lower_name}.*{upper_name}"):
+        parser.filter(**kwargs)
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "field", ["genres", "profile_list_exclusions", "types", "age_ratings"]
+)
+def test_filter_list_arguments_must_be_lists(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(TypeError, match=field):
+        parser.filter(**{field: ()})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "field", ["profile_list_exclusions", "types", "age_ratings"]
+)
+@pytest.mark.parametrize("value", [True, 1.5, -1])
+def test_filter_integer_lists_require_non_negative_non_boolean_ids(field, value):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    error_type = TypeError if value is True or value == 1.5 else ValueError
+    with pytest.raises(error_type, match=field):
+        parser.filter(**{field: [value]})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize("field", ["types", "age_ratings"])
+def test_filter_type_and_age_rating_ids_must_be_positive(field):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(ValueError, match=field):
+        parser.filter(**{field: [0]})
+    session.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("value", "error_type"),
+    [([1], TypeError), ([""], ValueError), (["  "], ValueError)],
+)
+def test_filter_genres_require_nonempty_strings(value, error_type):
+    session = Mock()
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(error_type, match="genres"):
+        parser.filter(genres=value)
+    session.post.assert_not_called()
+
+
+def test_filter_copies_caller_owned_lists_before_request():
+    caller_lists = {
+        "genres": ["Экшен"],
+        "profile_list_exclusions": [10],
+        "types": [1],
+        "age_ratings": [2],
+    }
+    originals = {key: list(value) for key, value in caller_lists.items()}
+    session = Mock()
+
+    def mutate_request(*args, **kwargs):
+        for value in kwargs["json"].values():
+            if isinstance(value, list):
+                value.append("server mutation")
+        return response(
+            {
+                "code": 0,
+                "content": [],
+                "current_page": 0,
+                "total_count": 0,
+                "total_page_count": 0,
+            }
+        )
+
+    session.post.side_effect = mutate_request
+    parser = AnixartParser(session=session)
+
+    parser.filter(**caller_lists)
+
+    assert caller_lists == originals
+    request = session.post.call_args.kwargs["json"]
+    for key, caller_value in caller_lists.items():
+        assert request[key] is not caller_value
+
+
+@pytest.mark.parametrize(
+    "field", ["current_page", "total_count", "total_page_count"]
+)
+@pytest.mark.parametrize("value", [True, "1", -1, None])
+def test_filter_rejects_invalid_pagination_values(field, value):
+    payload = {
+        "code": 0,
+        "content": [],
+        "current_page": 0,
+        "total_count": 0,
+        "total_page_count": 0,
+    }
+    payload[field] = value
+    session = Mock()
+    session.post.return_value = response(payload)
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match=field):
+        parser.filter()
+
+
+@pytest.mark.parametrize(
+    "field", ["current_page", "total_count", "total_page_count"]
+)
+def test_filter_requires_every_pagination_field(field):
+    payload = {
+        "code": 0,
+        "content": [],
+        "current_page": 0,
+        "total_count": 0,
+        "total_page_count": 0,
+    }
+    payload.pop(field)
+    session = Mock()
+    session.post.return_value = response(payload)
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match=field):
+        parser.filter()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        None,
+        {},
+        [None],
+        [[]],
+        [{}],
+        [{"id": True, "title": "Наруто"}],
+        [{"id": "42", "title": "Наруто"}],
+        [{"id": 42}],
+        [{"id": 42, "title": "  "}],
+        [{"id": 42, "title": None, "title_ru": ""}],
+    ],
+)
+def test_filter_rejects_malformed_release_content(content):
+    session = Mock()
+    session.post.return_value = response(
+        {
+            "code": 0,
+            "content": content,
+            "current_page": 0,
+            "total_count": 1,
+            "total_page_count": 1,
+        }
+    )
+    parser = AnixartParser(session=session)
+
+    with pytest.raises(errors.UnexpectedBehavior, match="content"):
+        parser.filter()
+
+
 def test_search_sends_expected_request_and_returns_releases():
     session = Mock()
     releases = [{"id": 42, "title": "Наруто"}]

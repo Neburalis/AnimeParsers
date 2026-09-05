@@ -57,9 +57,46 @@ parser = AnixartParser(proxy=None, timeout=10)
 releases = parser.search("Наруто")
 release = parser.anime_info(releases[0]["id"])
 players = parser.get_player_urls(release["id"])
+
+# Фильтр работает без токена и возвращает данные для пагинации.
+page = parser.filter(
+    page=0,
+    start_year=2020,
+    genres=["Экшен"],
+    sort=AnixartParser.SORT_POPULAR,
+)
+for release in page["content"]:
+    print(release["title"])
 ```
 
 `get_player_urls` не извлекает HLS или MP4, а возвращает внешние ссылки на плееры в порядке ответа Anixart. Каждый элемент списка содержит ровно ключи `type_id`, `type_name`, `source_id`, `source_name`, `episode_position`, `episode_name`, `iframe`, `quality` и `url`.
+
+Параметры `filter`:
+
+| Параметр | По умолчанию | Назначение |
+|---|---:|---|
+| `page` | `0` | Номер страницы |
+| `extended` | `True` | Расширенный ответ релиза |
+| `category_id` | `None` | ID категории |
+| `country` | `None` | Страна |
+| `start_year` | `None` | Год от |
+| `end_year` | `None` | Год до |
+| `episode_duration_from` | `None` | Длительность серии от |
+| `episode_duration_to` | `None` | Длительность серии до |
+| `episodes_from` | `None` | Количество серий от |
+| `episodes_to` | `None` | Количество серий до |
+| `is_genres_exclude_mode_enabled` | `False` | Исключать указанные жанры |
+| `season` | `None` | Сезон |
+| `source` | `None` | Первоисточник |
+| `status_id` | `None` | ID статуса |
+| `studio` | `None` | Студия |
+| `sort` | `SORT_DATE_UPDATE` | `SORT_DATE_UPDATE` (`0`), `SORT_GRADE` (`1`), `SORT_YEAR` (`2`) или `SORT_POPULAR` (`3`) |
+| `genres` | `[]` | Список жанров |
+| `profile_list_exclusions` | `[]` | ID списков профиля для исключения |
+| `types` | `[]` | ID типов релиза |
+| `age_ratings` | `[]` | ID возрастных рейтингов |
+
+Метод возвращает словарь с полями `content`, `current_page`, `total_count` и `total_page_count`. Пустой `content` означает пустую страницу и не вызывает `NoResults`.
 
 ## Kodik инструкция
 

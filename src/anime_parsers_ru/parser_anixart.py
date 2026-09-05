@@ -8,6 +8,11 @@ from . import errors
 class AnixartParser:
     """Синхронный клиент каталога Anixart."""
 
+    SORT_DATE_UPDATE = 0
+    SORT_GRADE = 1
+    SORT_YEAR = 2
+    SORT_POPULAR = 3
+
     _TITLE_FIELDS = ("title", "title_ru", "title_original", "title_alt")
 
     _HEADERS = {
@@ -115,6 +120,162 @@ class AnixartParser:
         if minimum is not None and value < minimum:
             raise ValueError(f"{name} должен быть не меньше {minimum}.")
 
+    @classmethod
+    def _extract_releases(cls, payload: dict, key: str) -> list:
+        releases = cls._extract(payload, key, list)
+        for release in releases:
+            if (
+                not isinstance(release, dict)
+                or type(release.get("id")) is not int
+                or not any(
+                    isinstance(release.get(field), str)
+                    and bool(release[field].strip())
+                    for field in cls._TITLE_FIELDS
+                )
+            ):
+                raise errors.UnexpectedBehavior(
+                    f'В ответе Anixart поле "{key}" содержит некорректный элемент.'
+                )
+        return releases
+
+    def filter(
+        self,
+        *,
+        page: int = 0,
+        extended: bool = True,
+        category_id: int | None = None,
+        country: str | None = None,
+        end_year: int | None = None,
+        episode_duration_from: int | None = None,
+        episode_duration_to: int | None = None,
+        episodes_from: int | None = None,
+        episodes_to: int | None = None,
+        is_genres_exclude_mode_enabled: bool = False,
+        season: int | None = None,
+        source: str | None = None,
+        start_year: int | None = None,
+        status_id: int | None = None,
+        studio: str | None = None,
+        sort: int = SORT_DATE_UPDATE,
+        genres: list[str] | None = None,
+        profile_list_exclusions: list[int] | None = None,
+        types: list[int] | None = None,
+        age_ratings: list[int] | None = None,
+    ) -> dict:
+        self._validate_int("page", page, 0)
+        for name, value, minimum in (
+            ("category_id", category_id, 1),
+            ("end_year", end_year, None),
+            ("episode_duration_from", episode_duration_from, 0),
+            ("episode_duration_to", episode_duration_to, 0),
+            ("episodes_from", episodes_from, 0),
+            ("episodes_to", episodes_to, 0),
+            ("season", season, None),
+            ("start_year", start_year, None),
+            ("status_id", status_id, 1),
+        ):
+            if value is not None:
+                self._validate_int(name, value, minimum)
+        self._validate_int("sort", sort)
+        if sort not in (
+            self.SORT_DATE_UPDATE,
+            self.SORT_GRADE,
+            self.SORT_YEAR,
+            self.SORT_POPULAR,
+        ):
+            raise ValueError("sort должен быть одним из значений 0, 1, 2 или 3.")
+        for name, value in (
+            ("extended", extended),
+            ("is_genres_exclude_mode_enabled", is_genres_exclude_mode_enabled),
+        ):
+            if type(value) is not bool:
+                raise TypeError(f"{name} должен быть логическим значением.")
+        for name, value in (
+            ("country", country),
+            ("source", source),
+            ("studio", studio),
+        ):
+            if value is not None and not isinstance(value, str):
+                raise TypeError(f"{name} должен быть строкой или None.")
+            if isinstance(value, str) and not value.strip():
+                raise ValueError(f"{name} не должен быть пустым.")
+        for lower_name, lower, upper_name, upper in (
+            ("start_year", start_year, "end_year", end_year),
+            ("episodes_from", episodes_from, "episodes_to", episodes_to),
+            (
+                "episode_duration_from",
+                episode_duration_from,
+                "episode_duration_to",
+                episode_duration_to,
+            ),
+        ):
+            if lower is not None and upper is not None and lower > upper:
+                raise ValueError(f"{lower_name} не должен превышать {upper_name}.")
+        for name, value in (
+            ("genres", genres),
+            ("profile_list_exclusions", profile_list_exclusions),
+            ("types", types),
+            ("age_ratings", age_ratings),
+        ):
+            if value is not None and not isinstance(value, list):
+                raise TypeError(f"{name} должен быть списком.")
+        if genres is not None:
+            if any(not isinstance(genre, str) for genre in genres):
+                raise TypeError("genres должен содержать только строки.")
+            if any(not genre.strip() for genre in genres):
+                raise ValueError("genres не должен содержать пустые строки.")
+        for name, values in (
+            ("profile_list_exclusions", profile_list_exclusions),
+            ("types", types),
+            ("age_ratings", age_ratings),
+        ):
+            if values is None:
+                continue
+            if any(type(value) is not int for value in values):
+                raise TypeError(f"{name} должен содержать только целые числа.")
+            minimum = 0 if name == "profile_list_exclusions" else 1
+            if any(value < minimum for value in values):
+                raise ValueError(f"{name} должен содержать значения не меньше {minimum}.")
+
+        request = {
+            "category_id": category_id,
+            "country": country,
+            "end_year": end_year,
+            "episode_duration_from": episode_duration_from,
+            "episode_duration_to": episode_duration_to,
+            "episodes_from": episodes_from,
+            "episodes_to": episodes_to,
+            "is_genres_exclude_mode_enabled": is_genres_exclude_mode_enabled,
+            "season": season,
+            "source": source,
+            "start_year": start_year,
+            "status_id": status_id,
+            "studio": studio,
+            "sort": sort,
+            "genres": [] if genres is None else list(genres),
+            "profile_list_exclusions": (
+                []
+                if profile_list_exclusions is None
+                else list(profile_list_exclusions)
+            ),
+            "types": [] if types is None else list(types),
+            "age_ratings": [] if age_ratings is None else list(age_ratings),
+        }
+        payload = self._request(
+            "post",
+            f"filter/{page}?extended_mode={str(extended).lower()}",
+            json=request,
+        )
+        result = {"content": self._extract_releases(payload, "content")}
+        for field in ("current_page", "total_count", "total_page_count"):
+            value = payload.get(field)
+            if type(value) is not int or value < 0:
+                raise errors.UnexpectedBehavior(
+                    f'В ответе Anixart отсутствует корректное поле "{field}".'
+                )
+            result[field] = value
+        return result
+
     def search(self, query: str, page: int = 0, search_by: int = 0) -> list:
         if not isinstance(query, str):
             raise TypeError("query должен быть строкой.")
@@ -127,22 +288,9 @@ class AnixartParser:
             f"search/releases/{page}",
             json={"query": query, "searchBy": search_by},
         )
-        releases = self._extract(payload, "releases", list)
+        releases = self._extract_releases(payload, "releases")
         if not releases:
             raise errors.NoResults(f'По запросу "{query}" ничего не найдено.')
-        for release in releases:
-            if (
-                not isinstance(release, dict)
-                or type(release.get("id")) is not int
-                or not any(
-                    isinstance(release.get(field), str)
-                    and bool(release[field].strip())
-                    for field in self._TITLE_FIELDS
-                )
-            ):
-                raise errors.UnexpectedBehavior(
-                    'В ответе Anixart поле "releases" содержит некорректный элемент.'
-                )
         return releases
 
     def anime_info(self, release_id: int, extended: bool = True) -> dict:
