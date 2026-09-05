@@ -1,12 +1,12 @@
 Metadata-Version: 2.4
 Name: anime_parsers_ru
-Version: 1.17.0
+Version: 1.18.0
 Summary: Python package for parsing russian anime players
 Author-email: YaNesyTortiK <ya.nesy.tortik.email@gmail.com>
 Maintainer-email: YaNesyTortiK <ya.nesy.tortik.email@gmail.com>
 Project-URL: Homepage, https://github.com/YaNesyTortiK/AnimeParsers
 Project-URL: Issues, https://github.com/YaNesyTortiK/AnimeParsers/issues
-Keywords: anime,parser,kodik,parsing,aniboom,animego,cvh,jutsu,shikimori,kodikapi,kodik api,аниме,парсинг,кодик,парсер,анибум,анимего,джутсу,шикимори,кодик апи
+Keywords: anime,parser,kodik,parsing,aniboom,animego,cvh,jutsu,shikimori,kodikapi,kodik api,anilibria api,aniliberty api,аниме,парсинг,кодик,парсер,анибум,анимего,джутсу,шикимори,кодик апи,анилибрия апи,анилиберти апи
 Classifier: Development Status :: 4 - Beta
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
@@ -38,6 +38,7 @@ Dynamic: license-file
     - [x] Парсер плеера CVH
 - [x] Парсер JutSu (без функции поиска, не требует api ключей) (доступно через прокси)
 - [x] Парсер Shikimori (с возможностью использовать псевдо-api, не требует api ключей) (+ асинхронный)
+- [x] API Враппер для Aniibria/Aniliberty (пока только синхронный)
 
 ## Установка
 - Стандартная установка:
@@ -66,6 +67,7 @@ pip install lxml
 - [AnimeGO инструкция](#animego-инструкция)
 - [JutSu инструкция](#jutsu-инструкция)
 - [Shikimori инструкция](#shikimori-инструкция)
+- [Aniliberty API инструкция](ANILIBERTY_API.md)
 - [Типы Исключений](#типы-исключений)
 
 ## Kodik инструкция

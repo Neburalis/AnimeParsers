@@ -10,7 +10,7 @@
 Инициализировать требуется только класс AnilibertyAPI. Все остальные подклассы (которые наследуются от того-же шаблонного класса что и основой) будут инициализированы автоматически.
 
 ```python
-from src.anime_parsers_ru import AnilibertyAPI
+from anime_parsers_ru import AnilibertyAPI
 
 api = AnilibertyAPI(
     api_path='https://aniliberty.top/api/v1', # URL к апи эндпоинту (по умолчанию https://aniliberty.top/api/v1)
